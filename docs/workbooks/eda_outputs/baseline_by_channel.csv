@@ -1,0 +1,6 @@
+group,tickets,fcr_rate_pct,escalation_rate_pct,repeat_contact_rate_pct,csat_mean,csat_median,resolution_minutes_mean,resolution_minutes_median,answerable_from_docs_pct,expected_auto_respond_pct
+__overall__,500,43.8,56.2,21.6,2.972,3.0,421.7,214.0,71.4,62.2
+chat,155,44.52,55.48,19.35,2.723,3.0,426.71,209.0,76.77,67.74
+docs_comment,78,34.62,65.38,33.33,3.167,3.0,514.65,465.5,61.54,52.56
+email,212,44.81,55.19,20.75,3.08,3.0,381.66,193.0,72.17,62.74
+forum,55,50.91,49.09,14.55,2.982,3.0,430.07,54.0,67.27,58.18

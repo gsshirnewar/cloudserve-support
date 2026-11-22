@@ -1,0 +1,4 @@
+group,tickets,fcr_rate_pct,escalation_rate_pct,repeat_contact_rate_pct,csat_mean,csat_median,resolution_minutes_mean,resolution_minutes_median,answerable_from_docs_pct,expected_auto_respond_pct
+__overall__,500,43.8,56.2,21.6,2.972,3.0,421.7,214.0,71.4,62.2
+fluent,380,43.16,56.84,22.37,2.95,3.0,407.68,216.5,71.05,60.79
+non_fluent,120,45.83,54.17,19.17,3.042,3.0,466.07,198.0,72.5,66.67

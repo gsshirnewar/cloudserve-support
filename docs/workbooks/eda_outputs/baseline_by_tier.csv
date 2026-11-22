@@ -1,0 +1,5 @@
+group,tickets,fcr_rate_pct,escalation_rate_pct,repeat_contact_rate_pct,csat_mean,csat_median,resolution_minutes_mean,resolution_minutes_median,answerable_from_docs_pct,expected_auto_respond_pct
+__overall__,500,43.8,56.2,21.6,2.972,3.0,421.7,214.0,71.4,62.2
+business,164,48.17,51.83,23.17,2.915,3.0,358.8,141.0,75.0,64.63
+enterprise,83,37.35,62.65,24.1,3.048,3.0,483.7,369.0,71.08,61.45
+standard,253,43.08,56.92,19.76,2.984,3.0,442.13,266.0,69.17,60.87
