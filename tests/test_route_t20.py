@@ -68,6 +68,25 @@ def test_no_doc_and_must_not_auto_cases_blocked():
     assert d_not_answerable.route == "block"
 
 
+def test_ground_truth_labels_do_not_control_routing():
+    cls = _cls("T-204", conf=0.95)
+    ret = _ret("T-204")
+
+    labelled_answerable = route_ticket(
+        {"ticket_id": "T-204", "labels": {"answerable_from_docs": False}},
+        cls,
+        ret,
+    )
+    labelled_restricted = route_ticket(
+        {"ticket_id": "T-204", "labels": {"must_not_auto_respond": True}},
+        cls,
+        ret,
+    )
+
+    assert labelled_answerable.route == "auto_answer"
+    assert labelled_restricted.route == "auto_answer"
+
+
 def test_confidence_bands_and_fallback_routing():
     policy = RoutingPolicy(route_auto_min_confidence=0.85, route_assist_min_confidence=0.6)
     ret = _ret("T-300")

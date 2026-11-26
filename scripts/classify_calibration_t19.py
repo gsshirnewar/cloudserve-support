@@ -99,17 +99,16 @@ def main() -> int:
                 "channel": t.get("channel"),
                 "subject": t.get("subject"),
                 "body": t.get("body"),
-                "customer": t.get("customer"),
             }
             cls = classifier.classify_ticket(ticket_input)  # type: ignore[union-attr]
             pred = {
                 "intent": cls.intent,
                 "urgency": cls.urgency,
-                "intent_confidence": (cls.metadata or {}).get("intent_confidence", cls.confidence),
-                "urgency_confidence": (cls.metadata or {}).get("urgency_confidence", cls.confidence),
-                "overall_confidence": (cls.metadata or {}).get("overall_confidence", cls.confidence),
-                "fallback_used": cls.classifier_status != "ok",
-                "classifier_status": cls.classifier_status,
+                "intent_confidence": cls.intent_confidence,
+                "urgency_confidence": cls.urgency_confidence,
+                "overall_confidence": cls.overall_confidence,
+                "fallback_used": cls.fallback_used,
+                "classifier_status": "fallback" if cls.fallback_used else "ok",
             }
 
         joint_correct = int(pred.get("intent") == true_intent and pred.get("urgency") == true_urgency)

@@ -78,10 +78,6 @@ def _is_must_not_auto(ticket: Mapping[str, Any]) -> tuple[bool, List[str]]:
             if bool(meta.get(key)) is True:
                 must = True
                 flags.append(f"metadata.{key}")
-    labels = ticket.get("labels") or {}
-    if isinstance(labels, Mapping) and bool(labels.get("must_not_auto_respond")) is True:
-        must = True
-        flags.append("labels.must_not_auto_respond")
     policy_flags = ticket.get("policy_flags") or []
     if isinstance(policy_flags, (list, tuple, set)):
         for pf in policy_flags:
@@ -140,8 +136,6 @@ def route_ticket(
 
     must_not_auto, must_flags = _is_must_not_auto(t)
     answerable = t.get("answerable_from_docs")
-    if answerable is None and isinstance(t.get("labels"), Mapping):
-        answerable = t["labels"].get("answerable_from_docs")
 
     thresholds_applied: Dict[str, Any] = {
         "route_auto_min_confidence": pol.route_auto_min_confidence,
