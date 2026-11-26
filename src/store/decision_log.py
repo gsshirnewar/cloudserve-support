@@ -299,6 +299,40 @@ class DecisionLogStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def fetch_by_ticket_id(self, ticket_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        with self.connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM decision_log WHERE ticket_id = ? ORDER BY id DESC LIMIT ?",
+                (ticket_id, int(limit)),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def fetch_latest_by_ticket_id(self, ticket_id: str) -> Optional[Dict[str, Any]]:
+        rows = self.fetch_by_ticket_id(ticket_id, limit=1)
+        return rows[0] if rows else None
+
+    def fetch_by_id(self, row_id: int) -> Optional[Dict[str, Any]]:
+        with self.connection() as conn:
+            row = conn.execute("SELECT * FROM decision_log WHERE id = ?", (int(row_id),)).fetchone()
+        return dict(row) if row else None
+
+    def metrics_summary(self) -> Dict[str, Any]:
+        with self.connection() as conn:
+            total = conn.execute("SELECT COUNT(*) AS c FROM decision_log").fetchone()["c"]
+            by_action_rows = conn.execute(
+                "SELECT final_action, COUNT(*) AS c FROM decision_log GROUP BY final_action"
+            ).fetchall()
+            guardrail_rows = conn.execute(
+                "SELECT guardrail_action, COUNT(*) AS c FROM decision_log GROUP BY guardrail_action"
+            ).fetchall()
+        by_action = {str(r["final_action"]): int(r["c"]) for r in by_action_rows}
+        by_guardrail = {str(r["guardrail_action"]): int(r["c"]) for r in guardrail_rows}
+        return {
+            "decisions_logged": int(total),
+            "by_terminal_state": by_action,
+            "guardrail_actions": by_guardrail,
+        }
+
 
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m src.store.decision_log", description="Decision log store utilities")
