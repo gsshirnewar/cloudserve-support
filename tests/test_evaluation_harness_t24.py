@@ -144,3 +144,43 @@ def test_resume_recovers_decision_logged_before_results_checkpoint(tmp_path, mon
     assert len(records) == 3
     assert all(row["input_index"] in {0, 1, 2} for row in records)
     assert sum(bool(row["result"].get("recovered_from_decision_log")) for row in records) == 3
+
+
+def test_atomic_checkpoint_retries_transient_windows_permission_error(tmp_path, monkeypatch):
+    destination = tmp_path / "manifest.json"
+    original_replace = harness.os.replace
+    calls = 0
+
+    def replace_with_one_transient_failure(source, target):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise PermissionError("transient file lock")
+        original_replace(source, target)
+
+    monkeypatch.setattr(harness.os, "replace", replace_with_one_transient_failure)
+    monkeypatch.setattr(harness.time, "sleep", lambda _: None)
+
+    harness._atomic_write_json(destination, {"status": "running"})
+
+    assert calls == 2
+    assert json.loads(destination.read_text(encoding="utf-8")) == {"status": "running"}
+
+
+def test_recovered_provider_fallback_is_counted_as_degraded():
+    record = harness._recover_record(
+        0,
+        {"ticket_id": "OFFLINE-1", "channel": "chat"},
+        "run-offline",
+        {
+            "ticket_id": "OFFLINE-1",
+            "final_action": "escalated",
+            "predicted_intent": "unknown_intent",
+            "predicted_urgency": "unknown_urgency",
+            "fallback_reason_text": "simulated provider unavailable",
+        },
+    )
+
+    assert record["result"]["degraded"] is True
+    assert record["result"]["classification"]["fallback_used"] is True
+    assert record["metrics_observation"]["degraded"] is True

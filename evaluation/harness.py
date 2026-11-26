@@ -28,6 +28,17 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _replace_with_retry(temporary: Path, destination: Path) -> None:
+    for attempt in range(6):
+        try:
+            os.replace(str(temporary), str(destination))
+            return
+        except PermissionError:
+            if attempt == 5:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+
+
 def _load_tickets(path: Path) -> Tuple[List[Any], str]:
     raw_bytes = path.read_bytes()
     fingerprint = hashlib.sha256(raw_bytes).hexdigest()
@@ -57,9 +68,9 @@ def _load_tickets(path: Path) -> Tuple[List[Any], str]:
 
 
 def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    temporary = path.with_name(path.name + ".tmp")
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
-    os.replace(str(temporary), str(path))
+    _replace_with_retry(temporary, path)
 
 
 def _read_results(path: Path) -> Dict[int, Dict[str, Any]]:
@@ -96,14 +107,14 @@ def _append_result(path: Path, record: Mapping[str, Any]) -> None:
 
 
 def _compact_results(path: Path, records: Mapping[int, Mapping[str, Any]]) -> None:
-    temporary = path.with_name(path.name + ".tmp")
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
     with temporary.open("w", encoding="utf-8", newline="\n") as results_file:
         for index in sorted(records):
             results_file.write(json.dumps(records[index], ensure_ascii=False, separators=(",", ":"), default=str))
             results_file.write("\n")
         results_file.flush()
         os.fsync(results_file.fileno())
-    os.replace(str(temporary), str(path))
+    _replace_with_retry(temporary, path)
 
 
 def _parse_json_field(value: Any, default: Any) -> Any:
@@ -213,6 +224,7 @@ def _recover_record(index: int, ticket: Any, run_id: str, row: Mapping[str, Any]
     errors = _parse_json_field(row.get("error_flags_json"), [])
     intent = row.get("predicted_intent")
     urgency = row.get("predicted_urgency")
+    fallback_reason = row.get("fallback_reason_text")
     validation = {
         "checks": checks if isinstance(checks, list) else [],
         "passed": not any(isinstance(c, dict) and not c.get("passed", True) for c in checks or []),
@@ -231,6 +243,8 @@ def _recover_record(index: int, ticket: Any, run_id: str, row: Mapping[str, Any]
             "intent_confidence": row.get("intent_confidence"),
             "urgency_confidence": row.get("urgency_confidence"),
             "overall_confidence": row.get("overall_confidence"),
+            "fallback_used": bool(fallback_reason),
+            "fallback_reason": fallback_reason,
         },
         "retrieval": {"hits": retrieval_hits if isinstance(retrieval_hits, list) else []},
         "route": {"route": row.get("route_decision"), "reason": row.get("route_reason_text")},
@@ -238,7 +252,7 @@ def _recover_record(index: int, ticket: Any, run_id: str, row: Mapping[str, Any]
         "decision_row_id": row.get("id"),
         "run_id": run_id,
         "errors": errors if isinstance(errors, list) else [],
-        "degraded": bool(errors),
+        "degraded": bool(errors) or bool(fallback_reason),
         "recovered_from_decision_log": True,
     }
     return _make_record(index, ticket, run_id, recovered, float(row.get("latency_ms_total") or 0))

@@ -186,7 +186,14 @@ class PipelineOrchestrator:
         else:
             classification = clf.classify_ticket(ticket)
         state["classification"] = classification
-        state["node_outcomes"]["classify"] = {"ok": True, "fallback_used": bool(getattr(classification, "fallback_used", False)), "intent": getattr(classification, "intent", None)}
+        fallback_used = bool(getattr(classification, "fallback_used", False))
+        if fallback_used:
+            state["degraded"] = True
+        state["node_outcomes"]["classify"] = {
+            "ok": not fallback_used,
+            "fallback_used": fallback_used,
+            "intent": getattr(classification, "intent", None),
+        }
         return state
 
     def _node_retrieve(self, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -233,6 +240,8 @@ class PipelineOrchestrator:
                 ret_obj = RetrievalResult(ticket_id=ticket_id, query=query, hits=[], top_score=None, sufficient_evidence=False, error=f"{type(e).__name__}: {e}")
         state["retrieval"] = ret_obj
         state["node_outcomes"]["retrieve"] = {"ok": ret_obj.error is None, "hits": len(ret_obj.hits or []), "sufficient": bool(ret_obj.sufficient_evidence), "error": ret_obj.error}
+        if ret_obj.error is not None:
+            state["degraded"] = True
         return state
 
     def _node_route(self, state: Dict[str, Any]) -> Dict[str, Any]:
